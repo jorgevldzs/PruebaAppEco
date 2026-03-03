@@ -1,672 +1,1400 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoVision - Clasificador de Basura IA</title>
-    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-dark: #0a0e12;
-            --bg-surface: #151a21;
-            --accent-green: #00ff88;
-            --accent-blue: #00d4ff;
-            --accent-yellow: #ffd600;
-            --text-primary: #ffffff;
-            --text-secondary: #a0aec0;
-            --organic: #4ade80;
-            --recyclable: #3b82f6;
-            --non-recyclable: #ef4444;
-            --hazardous: #f59e0b;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Manrope', sans-serif;
-            background: var(--bg-dark);
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
-            position: relative;
-        }
-
-        /* Animated background */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: 
-                radial-gradient(circle at 20% 50%, rgba(0, 255, 136, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 50% 20%, rgba(255, 214, 0, 0.05) 0%, transparent 50%);
-            z-index: 0;
-            animation: pulse 8s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 3rem;
-            animation: fadeInDown 0.8s ease;
-        }
-
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        h1 {
-            font-family: 'Archivo Black', sans-serif;
-            font-size: clamp(2.5rem, 8vw, 4.5rem);
-            background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-blue) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 0.5rem;
-            letter-spacing: -0.02em;
-        }
-
-        .subtitle {
-            color: var(--text-secondary);
-            font-size: 1.1rem;
-            font-weight: 500;
-        }
-
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 2rem;
-            animation: fadeInUp 0.8s ease 0.2s both;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .camera-section {
-            background: var(--bg-surface);
-            border-radius: 24px;
-            padding: 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .camera-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--accent-green), var(--accent-blue), var(--accent-yellow));
-            animation: shimmer 3s linear infinite;
-        }
-
-        @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-
-        .camera-container {
-            position: relative;
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto 1.5rem;
-            aspect-ratio: 4/3;
-            background: #000;
-            border-radius: 16px;
-            overflow: hidden;
-            border: 2px solid rgba(0, 255, 136, 0.2);
-        }
-
-        #video, #canvas {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: none;
-        }
-
-        #video.active, #canvas.active {
-            display: block;
-        }
-
-        .placeholder {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: var(--text-secondary);
-        }
-
-        .placeholder svg {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 1rem;
-            stroke: var(--accent-green);
-            animation: float 3s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        .controls {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        button {
-            font-family: 'Manrope', sans-serif;
-            font-weight: 700;
-            padding: 1rem 2rem;
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        button::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-
-        button:hover::before {
-            width: 300px;
-            height: 300px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
-            color: var(--bg-dark);
-            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 15px 40px rgba(0, 255, 136, 0.4);
-        }
-
-        .btn-secondary {
-            background: var(--bg-surface);
-            color: var(--text-primary);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .btn-secondary:hover {
-            border-color: var(--accent-green);
-            background: rgba(0, 255, 136, 0.1);
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        button span {
-            position: relative;
-            z-index: 1;
-        }
-
-        .results-section {
-            background: var(--bg-surface);
-            border-radius: 24px;
-            padding: 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            min-height: 300px;
-            display: none;
-            animation: slideIn 0.5s ease;
-        }
-
-        .results-section.active {
-            display: block;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .result-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .category-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            animation: bounce 0.6s ease;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-
-        .category-organic { background: linear-gradient(135deg, var(--organic), #22c55e); }
-        .category-recyclable { background: linear-gradient(135deg, var(--recyclable), #2563eb); }
-        .category-non-recyclable { background: linear-gradient(135deg, var(--non-recyclable), #dc2626); }
-        .category-hazardous { background: linear-gradient(135deg, var(--hazardous), #d97706); }
-
-        .result-info h3 {
-            font-size: 1.5rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .result-info p {
-            color: var(--text-secondary);
-        }
-
-        .result-details {
-            background: rgba(255, 255, 255, 0.03);
-            padding: 1.5rem;
-            border-radius: 12px;
-            margin-bottom: 1rem;
-        }
-
-        .result-details h4 {
-            color: var(--accent-green);
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .result-details p {
-            line-height: 1.6;
-            color: var(--text-secondary);
-        }
-
-        .loading {
-            text-align: center;
-            padding: 2rem;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            margin: 0 auto 1rem;
-            border: 4px solid rgba(0, 255, 136, 0.2);
-            border-top-color: var(--accent-green);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .error {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid var(--non-recyclable);
-            padding: 1rem;
-            border-radius: 12px;
-            color: var(--non-recyclable);
-        }
-
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-        }
-
-        .file-input-wrapper input[type=file] {
-            position: absolute;
-            left: -9999px;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
-            }
-
-            h1 {
-                font-size: 2.5rem;
-            }
-
-            .controls {
-                flex-direction: column;
-            }
-
-            button {
-                width: 100%;
-            }
-        }
-
-        .confidence-bar {
-            margin-top: 1rem;
-            background: rgba(255, 255, 255, 0.05);
-            height: 8px;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .confidence-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
-            transition: width 1s ease;
-            border-radius: 4px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>EcoVision</h1>
-            <p class="subtitle">Clasificador Inteligente de Basura con IA</p>
-        </header>
-
-        <div class="main-content">
-            <div class="camera-section">
-                <div class="camera-container">
-                    <video id="video" autoplay playsinline></video>
-                    <canvas id="canvas"></canvas>
-                    <div class="placeholder" id="placeholder">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                            <circle cx="12" cy="13" r="4"></circle>
-                        </svg>
-                        <p>Captura o sube una foto de basura</p>
-                    </div>
-                </div>
-
-                <div class="controls">
-                    <button id="startCamera" class="btn-primary">
-                        <span>📸 Iniciar Cámara</span>
-                    </button>
-                    <button id="capture" class="btn-primary" style="display: none;">
-                        <span>✨ Capturar y Analizar</span>
-                    </button>
-                    <div class="file-input-wrapper">
-                        <button class="btn-secondary">
-                            <span>📁 Subir Imagen</span>
-                        </button>
-                        <input type="file" id="fileInput" accept="image/*">
-                    </div>
-                    <button id="stopCamera" class="btn-secondary" style="display: none;">
-                        <span>⏹️ Detener</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="results-section" id="results">
-                <!-- Los resultados se mostrarán aquí -->
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const placeholder = document.getElementById('placeholder');
-        const startCameraBtn = document.getElementById('startCamera');
-        const captureBtn = document.getElementById('capture');
-        const stopCameraBtn = document.getElementById('stopCamera');
-        const fileInput = document.getElementById('fileInput');
-        const results = document.getElementById('results');
-
-        let stream = null;
-
-        // Iniciar cámara
-        startCameraBtn.addEventListener('click', async () => {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' } 
-                });
-                video.srcObject = stream;
-                video.classList.add('active');
-                canvas.classList.remove('active');
-                placeholder.style.display = 'none';
-                
-                startCameraBtn.style.display = 'none';
-                captureBtn.style.display = 'inline-block';
-                stopCameraBtn.style.display = 'inline-block';
-            } catch (err) {
-                showError('No se pudo acceder a la cámara. Por favor, verifica los permisos.');
-            }
-        });
-
-        // Capturar imagen
-        captureBtn.addEventListener('click', () => {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0);
-            
-            video.classList.remove('active');
-            canvas.classList.add('active');
-            
-            const imageData = canvas.toDataURL('image/jpeg', 0.8);
-            analyzeImage(imageData);
-        });
-
-        // Detener cámara
-        stopCameraBtn.addEventListener('click', () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
-            video.classList.remove('active');
-            canvas.classList.remove('active');
-            placeholder.style.display = 'block';
-            
-            startCameraBtn.style.display = 'inline-block';
-            captureBtn.style.display = 'none';
-            stopCameraBtn.style.display = 'none';
-        });
-
-        // Subir imagen
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0);
-                        
-                        video.classList.remove('active');
-                        canvas.classList.add('active');
-                        placeholder.style.display = 'none';
-                        
-                        const imageData = canvas.toDataURL('image/jpeg', 0.8);
-                        analyzeImage(imageData);
-                    };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        async function analyzeImage(imageData) {
-            showLoading();
-            
-            try {
-                const base64Data = imageData.split(',')[1];
-                
-                const response = await fetch('https://api.anthropic.com/v1/messages', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        model: 'claude-sonnet-4-20250514',
-                        max_tokens: 1000,
-                        messages: [{
-                            role: 'user',
-                            content: [
-                                {
-                                    type: 'image',
-                                    source: {
-                                        type: 'base64',
-                                        media_type: 'image/jpeg',
-                                        data: base64Data
-                                    }
-                                },
-                                {
-                                    type: 'text',
-                                    text: `Analiza esta imagen e identifica el tipo de basura. Responde ÚNICAMENTE en formato JSON con esta estructura exacta:
-{
-  "tipo": "orgánico|reciclable|no reciclable|peligroso",
-  "nombre": "nombre específico del objeto",
-  "descripcion": "descripción breve del item",
-  "instrucciones": "cómo debe desecharse correctamente",
-  "confianza": número entre 0 y 100
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>EcoSnap</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #242838;
+  --green: #b5ff4d;
+  --green-dark: #8fcc30;
+  --teal: #00e5c0;
+  --orange: #ff6b35;
+  --yellow: #ffd60a;
+  --blue: #4dabf7;
+  --red: #ff4d6d;
+  --text: #f0f0f0;
+  --muted: #7a7f99;
+  --border: rgba(255,255,255,0.07);
 }
 
-No incluyas markdown, solo el JSON puro.`
-                                }
-                            ]
-                        }]
-                    })
-                });
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
-                if (!response.ok) {
-                    throw new Error('Error en la respuesta de la API');
-                }
+html, body {
+  height:100%;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overscroll-behavior: none;
+}
 
-                const data = await response.json();
-                const textContent = data.content.find(c => c.type === 'text')?.text || '';
-                
-                // Limpiar la respuesta para obtener solo el JSON
-                let jsonText = textContent.trim();
-                jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-                
-                const result = JSON.parse(jsonText);
-                displayResults(result);
-                
-            } catch (error) {
-                console.error('Error:', error);
-                showError('Hubo un error al analizar la imagen. Por favor, intenta de nuevo.');
-            }
-        }
+/* ── WRAPPER ── */
+#app {
+  max-width: 430px;
+  margin: 0 auto;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
 
-        function showLoading() {
-            results.classList.add('active');
-            results.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>Analizando imagen con IA...</p>
-                </div>
-            `;
-        }
+/* ── SCREENS ── */
+.screen {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.screen.active { display: flex; }
 
-        function displayResults(result) {
-            const categoryMap = {
-                'orgánico': { icon: '🌱', class: 'category-organic' },
-                'reciclable': { icon: '♻️', class: 'category-recyclable' },
-                'no reciclable': { icon: '🗑️', class: 'category-non-recyclable' },
-                'peligroso': { icon: '⚠️', class: 'category-hazardous' }
-            };
+/* ── STATUS BAR SPOOF ── */
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  flex-shrink: 0;
+}
 
-            const category = categoryMap[result.tipo] || categoryMap['no reciclable'];
+/* ══════════════════════════════════════
+   SCREEN 1 — HOME
+══════════════════════════════════════ */
+#screen-home {
+  background: var(--bg);
+}
 
-            results.innerHTML = `
-                <div class="result-header">
-                    <div class="category-icon ${category.class}">
-                        ${category.icon}
-                    </div>
-                    <div class="result-info">
-                        <h3>${result.nombre}</h3>
-                        <p>Categoría: ${result.tipo.charAt(0).toUpperCase() + result.tipo.slice(1)}</p>
-                    </div>
-                </div>
+.home-header {
+  padding: 8px 24px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
 
-                <div class="result-details">
-                    <h4>📋 Descripción</h4>
-                    <p>${result.descripcion}</p>
-                </div>
+.home-header .logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--green);
+  letter-spacing: -1px;
+}
 
-                <div class="result-details">
-                    <h4>♻️ Instrucciones de Desecho</h4>
-                    <p>${result.instrucciones}</p>
-                </div>
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--teal), var(--green));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
 
-                <div class="result-details">
-                    <h4>🎯 Confianza del Análisis</h4>
-                    <p>${result.confianza}%</p>
-                    <div class="confidence-bar">
-                        <div class="confidence-fill" style="width: ${result.confianza}%"></div>
-                    </div>
-                </div>
-            `;
-        }
+.home-hero {
+  padding: 24px 24px 16px;
+  flex-shrink: 0;
+}
 
-        function showError(message) {
-            results.classList.add('active');
-            results.innerHTML = `
-                <div class="error">
-                    <h3>⚠️ Error</h3>
-                    <p>${message}</p>
-                </div>
-            `;
-        }
-    </script>
+.greeting {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.home-hero h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+.home-hero h2 span { color: var(--green); }
+
+/* Big scan button */
+.scan-zone {
+  margin: 8px 24px 20px;
+  background: var(--surface);
+  border-radius: 28px;
+  border: 1.5px dashed rgba(181,255,77,0.3);
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.scan-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(181,255,77,0.06) 0%, transparent 70%);
+}
+
+.scan-zone:active { transform: scale(0.98); }
+
+.scan-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 16px;
+  background: linear-gradient(135deg, var(--green), var(--teal));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  box-shadow: 0 0 40px rgba(181,255,77,0.3);
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%,100% { box-shadow: 0 0 30px rgba(181,255,77,0.2); }
+  50% { box-shadow: 0 0 60px rgba(181,255,77,0.5); }
+}
+
+.scan-zone p {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.scan-zone small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Stats row */
+.stats-row {
+  display: flex;
+  gap: 12px;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+
+.stat-card {
+  flex: 1;
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 16px 14px;
+  border: 1px solid var(--border);
+}
+
+.stat-card .stat-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--green);
+}
+
+.stat-card .stat-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Recent section */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px 12px;
+}
+
+.section-header h3 {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.section-header a {
+  font-size: 12px;
+  color: var(--green);
+  text-decoration: none;
+}
+
+.recent-items {
+  padding: 0 24px 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recent-item {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--border);
+}
+
+.recent-dot {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.recent-item-info { flex: 1; }
+.recent-item-info strong { display: block; font-size: 14px; font-weight: 600; }
+.recent-item-info span { font-size: 12px; color: var(--muted); }
+
+.badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* ══════════════════════════════════════
+   SCREEN 2 — CAMERA / SCANNER
+══════════════════════════════════════ */
+#screen-scan {
+  background: #000;
+  position: relative;
+}
+
+.scan-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 48px 20px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+}
+
+.back-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.scan-header span {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Camera preview */
+.camera-preview {
+  width: 100%;
+  height: 100%;
+  background: #111;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#canvas-capture {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+}
+
+/* Viewfinder */
+.viewfinder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  width: 240px;
+  height: 240px;
+  pointer-events: none;
+}
+
+.vf-corner {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-color: var(--green);
+  border-style: solid;
+  opacity: 0.8;
+}
+.vf-corner.tl { top:0;left:0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.vf-corner.tr { top:0;right:0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.vf-corner.bl { bottom:0;left:0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.vf-corner.br { bottom:0;right:0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+.scan-line {
+  position: absolute;
+  left: 4px; right: 4px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+  animation: scan-anim 2s linear infinite;
+  top: 4px;
+}
+
+@keyframes scan-anim {
+  0% { top: 4px; opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: calc(100% - 6px); opacity: 0; }
+}
+
+.camera-hint {
+  position: absolute;
+  bottom: 130px;
+  left: 0; right: 0;
+  text-align: center;
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+}
+
+/* Camera controls */
+.camera-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  padding: 20px 32px 40px;
+  background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+}
+
+.ctrl-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.ctrl-side span { font-size: 22px; }
+.ctrl-side p { font-size: 10px; color: rgba(255,255,255,0.5); }
+
+.shutter-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--green);
+  border: 4px solid rgba(255,255,255,0.3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  box-shadow: 0 0 30px rgba(181,255,77,0.4);
+  transition: transform 0.1s;
+  color: #000;
+  font-weight: bold;
+}
+
+.shutter-btn:active { transform: scale(0.93); }
+
+#fileInputScan {
+  display: none;
+}
+
+/* ══════════════════════════════════════
+   SCREEN 3 — RESULT
+══════════════════════════════════════ */
+#screen-result {
+  background: var(--bg);
+}
+
+.result-header-bar {
+  padding: 48px 20px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.result-header-bar span {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Image captured */
+.captured-img-wrap {
+  margin: 0 24px 20px;
+  border-radius: 24px;
+  overflow: hidden;
+  aspect-ratio: 4/3;
+  background: var(--surface);
+  position: relative;
+  flex-shrink: 0;
+}
+
+#result-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.result-category-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 8px 16px;
+  border-radius: 30px;
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(10px);
+}
+
+/* Result card */
+.result-card {
+  margin: 0 24px 16px;
+  background: var(--surface);
+  border-radius: 24px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.result-card .item-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.result-card .item-category {
+  font-size: 13px;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+.result-card .info-block {
+  background: var(--surface2);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.result-card .info-block .info-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.result-card .info-block p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* Bin instructions */
+.bin-card {
+  margin: 0 24px 16px;
+  border-radius: 24px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.bin-emoji { font-size: 44px; flex-shrink: 0; }
+
+.bin-info strong {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.bin-info p { font-size: 13px; opacity: 0.85; line-height: 1.4; }
+
+/* See map btn */
+.map-btn {
+  margin: 0 24px 16px;
+  background: var(--surface);
+  border: 1.5px solid rgba(181,255,77,0.3);
+  border-radius: 20px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.map-btn:active { transform: scale(0.98); }
+
+.map-btn .map-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--green), var(--teal));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.map-btn .map-text strong {
+  display: block;
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 2px;
+}
+
+.map-btn .map-text p {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.map-btn .arrow { margin-left: auto; color: var(--green); font-size: 18px; }
+
+.scan-again-btn {
+  margin: 0 24px 40px;
+  background: linear-gradient(135deg, var(--green), var(--teal));
+  color: #000;
+  border: none;
+  border-radius: 20px;
+  padding: 18px;
+  width: calc(100% - 48px);
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.scan-again-btn:active { transform: scale(0.97); }
+
+/* ══════════════════════════════════════
+   SCREEN 4 — MAP
+══════════════════════════════════════ */
+#screen-map {
+  background: var(--bg);
+}
+
+.map-header {
+  padding: 48px 20px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.map-header span {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.map-subtitle {
+  padding: 0 24px 16px;
+  font-size: 13px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* Fake map */
+.fake-map {
+  margin: 0 24px 20px;
+  border-radius: 24px;
+  overflow: hidden;
+  height: 240px;
+  background: var(--surface);
+  position: relative;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.map-bg {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+}
+
+/* SVG fake streets */
+.map-user-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  background: #4dabf7;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 6px rgba(77,171,247,0.3);
+  z-index: 5;
+}
+
+.map-pin {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  z-index: 4;
+}
+
+.map-pin .pin-bubble {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 5px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  margin-bottom: 4px;
+  border: 1.5px solid;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.map-pin .pin-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50% 50% 0 50%;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.map-pin .pin-dot span { transform: rotate(45deg); display:block; }
+
+/* Bins list */
+.bins-list {
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 100px;
+}
+
+.bins-list-header {
+  padding: 0 24px 12px;
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.bin-list-item {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--border);
+}
+
+.bin-list-item .bin-list-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.bin-list-item .bin-list-info { flex: 1; }
+.bin-list-item .bin-list-info strong { display: block; font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.bin-list-item .bin-list-info p { font-size: 12px; color: var(--muted); }
+
+.bin-list-item .dist-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green);
+  background: rgba(181,255,77,0.1);
+  padding: 6px 10px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════
+   BOTTOM NAV
+══════════════════════════════════════ */
+.bottom-nav {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding: 12px 0 28px;
+  backdrop-filter: blur(20px);
+  z-index: 100;
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-icon {
+  font-size: 22px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+}
+
+.nav-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+
+.nav-item.active .nav-label { color: var(--green); }
+
+.nav-item.active .nav-icon {
+  filter: drop-shadow(0 0 6px rgba(181,255,77,0.5));
+}
+
+/* ── LOADING OVERLAY ── */
+#loading-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10,14,18,0.9);
+  z-index: 999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+#loading-overlay.show { display: flex; }
+
+.loading-ring {
+  width: 60px;
+  height: 60px;
+  border: 4px solid var(--surface2);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#loading-overlay p {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  color: var(--text);
+}
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: all 0.3s;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ SCREEN: HOME ══ -->
+  <div id="screen-home" class="screen active">
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>🔋 92%</span>
+    </div>
+
+    <div class="home-header">
+      <div class="logo">EcoSnap 🌿</div>
+      <div class="avatar">🦋</div>
+    </div>
+
+    <div class="home-hero">
+      <p class="greeting">Buenos días, Xóchitl 👋</p>
+      <h2>¿Qué vas a<br>reciclar <span>hoy?</span></h2>
+    </div>
+
+    <div class="scan-zone" onclick="goToScan()">
+      <div class="scan-icon">📷</div>
+      <p>Toca para escanear</p>
+      <small>Apunta tu cámara a cualquier basura</small>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-num">47</div>
+        <div class="stat-label">Scans este mes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">3.2<small style="font-size:14px;color:var(--muted)">kg</small></div>
+        <div class="stat-label">Basura clasificada</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">🥉</div>
+        <div class="stat-label">Nivel EcoBronze</div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <h3>Recientes</h3>
+      <a href="#">Ver todo</a>
+    </div>
+
+    <div class="recent-items">
+      <div class="recent-item">
+        <div class="recent-dot" style="background:rgba(77,171,247,0.15)">♻️</div>
+        <div class="recent-item-info">
+          <strong>Botella PET</strong>
+          <span>Hace 2 horas · Col. Napoles</span>
+        </div>
+        <span class="badge" style="background:rgba(77,171,247,0.15);color:var(--blue)">Reciclable</span>
+      </div>
+      <div class="recent-item">
+        <div class="recent-dot" style="background:rgba(181,255,77,0.15)">🍃</div>
+        <div class="recent-item-info">
+          <strong>Cáscara de naranja</strong>
+          <span>Ayer · Casa</span>
+        </div>
+        <span class="badge" style="background:rgba(181,255,77,0.15);color:var(--green)">Orgánico</span>
+      </div>
+      <div class="recent-item">
+        <div class="recent-dot" style="background:rgba(255,107,53,0.15)">🔋</div>
+        <div class="recent-item-info">
+          <strong>Pila AA usada</strong>
+          <span>Hace 3 días · Oficina</span>
+        </div>
+        <span class="badge" style="background:rgba(255,214,10,0.15);color:var(--yellow)">Peligroso</span>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-item active">
+        <div class="nav-icon">🏠</div>
+        <span class="nav-label">Inicio</span>
+      </div>
+      <div class="nav-item" onclick="goToScan()">
+        <div class="nav-icon">📷</div>
+        <span class="nav-label">Escanear</span>
+      </div>
+      <div class="nav-item" onclick="goToMap()">
+        <div class="nav-icon">🗺️</div>
+        <span class="nav-label">Mapa</span>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">👤</div>
+        <span class="nav-label">Perfil</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: SCAN ══ -->
+  <div id="screen-scan" class="screen">
+    <div class="camera-preview">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas-capture" style="display:none;width:100%;height:100%;object-fit:cover;"></canvas>
+
+      <div class="viewfinder">
+        <div class="vf-corner tl"></div>
+        <div class="vf-corner tr"></div>
+        <div class="vf-corner bl"></div>
+        <div class="vf-corner br"></div>
+        <div class="scan-line"></div>
+      </div>
+
+      <div class="camera-hint" id="camera-hint">Centra el objeto dentro del marco</div>
+    </div>
+
+    <div class="scan-header">
+      <div class="back-btn" onclick="goBack()">‹</div>
+      <span>Escanear basura</span>
+    </div>
+
+    <div class="camera-controls">
+      <div class="ctrl-side" onclick="document.getElementById('fileInputScan').click()">
+        <span>🖼️</span>
+        <p>Galería</p>
+      </div>
+      <div class="shutter-btn" onclick="capturePhoto()" id="shutter">
+        ⚡
+      </div>
+      <div class="ctrl-side" onclick="toggleFlash()">
+        <span id="flash-icon">🔦</span>
+        <p>Flash</p>
+      </div>
+    </div>
+
+    <input type="file" id="fileInputScan" accept="image/*">
+  </div>
+
+  <!-- ══ SCREEN: RESULT ══ -->
+  <div id="screen-result" class="screen">
+    <div class="result-header-bar">
+      <div class="back-btn" onclick="goBack()">‹</div>
+      <span>Resultado</span>
+    </div>
+
+    <div class="captured-img-wrap">
+      <img id="result-img" src="" alt="Captura">
+      <div class="result-category-badge" id="result-badge"></div>
+    </div>
+
+    <div class="result-card" id="result-card">
+      <div class="item-name" id="res-name">—</div>
+      <div class="item-category" id="res-cat">—</div>
+
+      <div class="info-block">
+        <div class="info-label">💡 ¿Qué es?</div>
+        <p id="res-desc">—</p>
+      </div>
+
+      <div class="info-block">
+        <div class="info-label">♻️ Cómo desecharlo</div>
+        <p id="res-instruc">—</p>
+      </div>
+    </div>
+
+    <div class="bin-card" id="bin-card">
+      <div class="bin-emoji" id="bin-emoji">🗑️</div>
+      <div class="bin-info">
+        <strong id="bin-title">Contenedor</strong>
+        <p id="bin-desc">—</p>
+      </div>
+    </div>
+
+    <div class="map-btn" onclick="goToMap()">
+      <div class="map-icon">🗺️</div>
+      <div class="map-text">
+        <strong>Ver botes cercanos</strong>
+        <p>Encuentra dónde tirar esto</p>
+      </div>
+      <div class="arrow">›</div>
+    </div>
+
+    <button class="scan-again-btn" onclick="goToScan()">
+      📷 Escanear otro
+    </button>
+
+    <div style="height:40px;flex-shrink:0;"></div>
+  </div>
+
+  <!-- ══ SCREEN: MAP ══ -->
+  <div id="screen-map" class="screen">
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>🔋 92%</span>
+    </div>
+    <div class="map-header">
+      <div class="back-btn" onclick="goToHome()">‹</div>
+      <span>Botes cercanos</span>
+    </div>
+    <div class="map-subtitle">📍 Col. Napoles, CDMX · Radio 500m</div>
+
+    <div class="fake-map">
+      <!-- SVG Street grid -->
+      <svg class="map-bg" viewBox="0 0 382 240" xmlns="http://www.w3.org/2000/svg">
+        <rect width="382" height="240" fill="#1a1d27"/>
+        <!-- grid blocks -->
+        <rect x="0" y="0" width="382" height="240" fill="#1e2130"/>
+        <!-- roads horizontal -->
+        <rect x="0" y="60" width="382" height="18" fill="#242838" opacity="0.9"/>
+        <rect x="0" y="130" width="382" height="18" fill="#242838" opacity="0.9"/>
+        <rect x="0" y="195" width="382" height="18" fill="#242838" opacity="0.9"/>
+        <!-- roads vertical -->
+        <rect x="80" y="0" width="18" height="240" fill="#242838" opacity="0.9"/>
+        <rect x="180" y="0" width="18" height="240" fill="#242838" opacity="0.9"/>
+        <rect x="290" y="0" width="18" height="240" fill="#242838" opacity="0.9"/>
+        <!-- street names -->
+        <text x="10" y="73" fill="#4a5070" font-size="8" font-family="sans-serif">Av. Insurgentes</text>
+        <text x="10" y="143" fill="#4a5070" font-size="8" font-family="sans-serif">Calle Moctezuma</text>
+        <!-- blocks (buildings) -->
+        <rect x="20" y="8" width="50" height="45" rx="4" fill="#252a3a" opacity="0.8"/>
+        <rect x="100" y="8" width="70" height="45" rx="4" fill="#252a3a" opacity="0.8"/>
+        <rect x="200" y="8" width="80" height="45" rx="4" fill="#252a3a" opacity="0.8"/>
+        <rect x="310" y="8" width="62" height="45" rx="4" fill="#252a3a" opacity="0.8"/>
+        <rect x="20" y="88" width="55" height="35" rx="4" fill="#252a3a" opacity="0.8"/>
+        <rect x="100" y="88" width="70" height="35" rx="4" fill="#252a3a" opacity="0.8"/>
+        <rect x="200" y="88" width="80" height="35" rx="4" fill="#252a3a" opacity="0.8"/>
+        <rect x="310" y="88" width="62" height="35" rx="4" fill="#252a3a" opacity="0.8"/>
+        <!-- parks -->
+        <rect x="20" y="155" width="50" height="32" rx="4" fill="#1e2f1e" opacity="0.9"/>
+        <text x="32" y="175" fill="#3a5c3a" font-size="10">🌳</text>
+        <rect x="200" y="155" width="80" height="32" rx="4" fill="#1e2f1e" opacity="0.9"/>
+        <text x="228" y="175" fill="#3a5c3a" font-size="10">🌳🌳</text>
+        <!-- route lines -->
+        <line x1="191" y1="120" x2="110" y2="120" stroke="#b5ff4d" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+        <line x1="110" y1="120" x2="110" y2="69" stroke="#b5ff4d" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+      </svg>
+
+      <!-- User dot center -->
+      <div class="map-user-dot"></div>
+
+      <!-- Pins -->
+      <div class="map-pin" style="top:14%;left:18%" onclick="showToast('📍 Eco-Centro Napoles · 120m')">
+        <div class="pin-bubble" style="border-color:var(--blue);color:var(--blue);background:var(--bg)">♻️ 120m</div>
+        <div class="pin-dot" style="background:var(--blue)"><span>♻️</span></div>
+      </div>
+
+      <div class="map-pin" style="top:28%;left:55%" onclick="showToast('📍 Contenedor Orgánico · 220m')">
+        <div class="pin-bubble" style="border-color:var(--green);color:var(--green);background:var(--bg)">🌱 220m</div>
+        <div class="pin-dot" style="background:var(--green)"><span>🌱</span></div>
+      </div>
+
+      <div class="map-pin" style="top:15%;left:78%" onclick="showToast('📍 Punto Verde · 380m')">
+        <div class="pin-bubble" style="border-color:var(--yellow);color:var(--yellow);background:var(--bg)">⚠️ 380m</div>
+        <div class="pin-dot" style="background:var(--yellow)"><span>⚠️</span></div>
+      </div>
+    </div>
+
+    <div class="bins-list-header">Puntos de reciclaje</div>
+
+    <div class="bins-list">
+      <div class="bin-list-item">
+        <div class="bin-list-icon" style="background:rgba(77,171,247,0.15)">♻️</div>
+        <div class="bin-list-info">
+          <strong>Eco-Centro Napoles</strong>
+          <p>Av. Insurgentes Sur 743 · Abierto hasta 8pm</p>
+        </div>
+        <div class="dist-badge">120m</div>
+      </div>
+
+      <div class="bin-list-item">
+        <div class="bin-list-icon" style="background:rgba(181,255,77,0.15)">🌱</div>
+        <div class="bin-list-info">
+          <strong>Contenedor Orgánico</strong>
+          <p>Calle Moctezuma 44 · Lu-Vi 7am-7pm</p>
+        </div>
+        <div class="dist-badge">220m</div>
+      </div>
+
+      <div class="bin-list-item">
+        <div class="bin-list-icon" style="background:rgba(255,214,10,0.15)">⚠️</div>
+        <div class="bin-list-info">
+          <strong>Punto Verde CDMX</strong>
+          <p>Calle Morelos 12 · Residuos peligrosos</p>
+        </div>
+        <div class="dist-badge">380m</div>
+      </div>
+
+      <div class="bin-list-item">
+        <div class="bin-list-icon" style="background:rgba(77,171,247,0.15)">🏢</div>
+        <div class="bin-list-info">
+          <strong>Mercado Jamaica</strong>
+          <p>Centro de acopio interior · Sáb 8am-2pm</p>
+        </div>
+        <div class="dist-badge">490m</div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-item" onclick="goToHome()">
+        <div class="nav-icon">🏠</div>
+        <span class="nav-label">Inicio</span>
+      </div>
+      <div class="nav-item" onclick="goToScan()">
+        <div class="nav-icon">📷</div>
+        <span class="nav-label">Escanear</span>
+      </div>
+      <div class="nav-item active">
+        <div class="nav-icon">🗺️</div>
+        <span class="nav-label">Mapa</span>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">👤</div>
+        <span class="nav-label">Perfil</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="loading-ring"></div>
+  <p>Analizando con IA... 🌿</p>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════
+let prevScreen = 'home';
+let cameraStream = null;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+function goToHome() {
+  stopCamera();
+  showScreen('home');
+  prevScreen = 'home';
+}
+
+function goToScan() {
+  prevScreen = getCurrentScreen();
+  showScreen('scan');
+  startCamera();
+}
+
+function goToMap() {
+  prevScreen = getCurrentScreen();
+  showScreen('map');
+}
+
+function goBack() {
+  stopCamera();
+  if (prevScreen === 'result') showScreen('home');
+  else showScreen(prevScreen || 'home');
+  prevScreen = 'home';
+}
+
+function getCurrentScreen() {
+  const active = document.querySelector('.screen.active');
+  return active ? active.id.replace('screen-', '') : 'home';
+}
+
+// ════════════════════════════════════
+// CAMERA
+// ════════════════════════════════════
+async function startCamera() {
+  const video = document.getElementById('video');
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    video.srcObject = cameraStream;
+    video.style.display = 'block';
+    document.getElementById('canvas-capture').style.display = 'none';
+  } catch (e) {
+    document.getElementById('camera-hint').textContent = '📁 Usa galería (cámara no disponible)';
+  }
+}
+
+function stopCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+}
+
+function toggleFlash() {
+  const icon = document.getElementById('flash-icon');
+  icon.textContent = icon.textContent === '🔦' ? '💡' : '🔦';
+  showToast(icon.textContent === '💡' ? 'Flash activado' : 'Flash desactivado');
+}
+
+// ════════════════════════════════════
+// CAPTURE & ANALYZE (mock)
+// ════════════════════════════════════
+function capturePhoto() {
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas-capture');
+  const ctx = canvas.getContext('2d');
+
+  // If real camera available
+  if (cameraStream && video.videoWidth > 0) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    stopCamera();
+    analyzeImageMock(imageData);
+  } else {
+    // Trigger file input as fallback
+    document.getElementById('fileInputScan').click();
+  }
+}
+
+document.getElementById('fileInputScan').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.getElementById('canvas-capture');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      const imageData = canvas.toDataURL('image/jpeg', 0.8);
+      stopCamera();
+      analyzeImageMock(imageData);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+});
+
+// ════════════════════════════════════
+// MOCK DATA
+// ════════════════════════════════════
+const mockResults = [
+  {
+    tipo: 'reciclable',
+    nombre: 'Botella PET',
+    descripcion: 'Botella de plástico PET (Polietileno Tereftalato). Una de las más reciclables del mundo. El 80% se puede convertir en nuevas botellas o fibra textil.',
+    instrucciones: 'Enjuaga y aplasta antes de tirar. Retira la tapa y tírala por separado. Va al contenedor amarillo o azul según tu colonia.',
+    bote: { emoji: '🔵', titulo: 'Contenedor Azul (Reciclables)', desc: 'Plástico, vidrio, metal y cartón limpio', color: '#4dabf7', bg: 'rgba(77,171,247,0.15)' },
+    badge: { text: '♻️ Reciclable', bg: 'rgba(77,171,247,0.2)', color: '#4dabf7' }
+  },
+  {
+    tipo: 'orgánico',
+    nombre: 'Residuo Orgánico',
+    descripcion: 'Material biodegradable de origen vegetal o animal. Se descompone naturalmente y puede convertirse en composta de alta calidad para plantas.',
+    instrucciones: 'Ponlo en bolsa compostable o periódico. Va al contenedor gris o verde según tu delegación. Ideal para hacer composta en casa.',
+    bote: { emoji: '🟢', titulo: 'Contenedor Gris (Orgánicos)', desc: 'Restos de comida, hojas, madera y más', color: '#b5ff4d', bg: 'rgba(181,255,77,0.15)' },
+    badge: { text: '🌱 Orgánico', bg: 'rgba(181,255,77,0.2)', color: '#b5ff4d' }
+  },
+  {
+    tipo: 'no reciclable',
+    nombre: 'Residuo No Reciclable',
+    descripcion: 'Material que no puede ser reciclado en los programas convencionales. Incluye plásticos multicapa, papeles sucios o materiales mixtos contaminados.',
+    instrucciones: 'Va directo al contenedor negro o residual. Intenta reducir este tipo de basura eligiendo productos con menos empaques o más eco-friendly.',
+    bote: { emoji: '⚫', titulo: 'Contenedor Negro (Residual)', desc: 'Lo que no puede reciclarse ni compostar', color: '#a0aec0', bg: 'rgba(160,174,192,0.15)' },
+    badge: { text: '🗑️ No Reciclable', bg: 'rgba(160,174,192,0.2)', color: '#a0aec0' }
+  },
+  {
+    tipo: 'peligroso',
+    nombre: 'Residuo Peligroso',
+    descripcion: 'Material que contiene sustancias tóxicas, corrosivas o inflamables. Si se tira mal puede contaminar suelo y agua por décadas.',
+    instrucciones: 'Nunca lo tires a la basura común. Llévalo a un Punto Verde de la CDMX o al centro de acopio más cercano. Muchas ferreterías y tiendas también los reciben.',
+    bote: { emoji: '🟡', titulo: 'Punto Verde Especial ⚠️', desc: 'Pilas, electrónicos, medicamentos, tintas', color: '#ffd60a', bg: 'rgba(255,214,10,0.15)' },
+    badge: { text: '⚠️ Peligroso', bg: 'rgba(255,214,10,0.2)', color: '#ffd60a' }
+  }
+];
+
+function analyzeImageMock(imageData) {
+  showScreen('result');
+  document.getElementById('loading-overlay').classList.add('show');
+
+  setTimeout(() => {
+    document.getElementById('loading-overlay').classList.remove('show');
+
+    // Random result
+    const result = mockResults[Math.floor(Math.random() * mockResults.length)];
+    displayResult(imageData, result);
+    prevScreen = 'scan';
+  }, 1800);
+}
+
+function displayResult(imageData, result) {
+  document.getElementById('result-img').src = imageData;
+
+  // Badge
+  const badge = document.getElementById('result-badge');
+  badge.textContent = result.badge.text;
+  badge.style.background = result.badge.bg;
+  badge.style.color = result.badge.color;
+  badge.style.border = `1.5px solid ${result.badge.color}`;
+
+  // Card
+  document.getElementById('res-name').textContent = result.nombre;
+  const catEl = document.getElementById('res-cat');
+  catEl.textContent = result.tipo.charAt(0).toUpperCase() + result.tipo.slice(1);
+  catEl.style.color = result.badge.color;
+  document.getElementById('res-desc').textContent = result.descripcion;
+  document.getElementById('res-instruc').textContent = result.instrucciones;
+
+  // Bin card
+  const binCard = document.getElementById('bin-card');
+  binCard.style.background = result.bote.bg;
+  binCard.style.border = `1.5px solid ${result.bote.color}30`;
+  document.getElementById('bin-emoji').textContent = result.bote.emoji;
+  document.getElementById('bin-title').textContent = result.bote.titulo;
+  document.getElementById('bin-title').style.color = result.bote.color;
+  document.getElementById('bin-desc').textContent = result.bote.desc;
+
+  // Scroll to top
+  document.getElementById('screen-result').scrollTop = 0;
+}
+
+// ════════════════════════════════════
+// TOAST
+// ════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+</script>
 </body>
 </html>
